@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-cm
+data:
+  application.yml: |
+    runtime:
+      props:
+        unavailable: false
+        min-latency-in-milli: 10
+        max-latency-in-milli: 500
+        notify-kafka: true
+        producer-dlq: false
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: refresh,health,info,prometheus
+      endpoint:
+        prometheus:
+          enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true

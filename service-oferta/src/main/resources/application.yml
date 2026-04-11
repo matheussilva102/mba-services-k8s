@@ -1,0 +1,61 @@
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: service-oferta
+  config:
+    import: optional:file:/config/application.yml
+
+  datasource:
+    url: jdbc:postgresql://host.docker.internal:5432/db_oferta #banco especifico
+    username: admin   
+    password: admin
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+camel:
+  springboot:
+    main-run-controller: true
+  routes:
+    direct: 
+      consultar-oferta: direct:consultar-oferta
+      consultar-oferta-bloqueante: direct:consultar-oferta-bloqueante
+    kafka:
+      notificar-oferta: kafka:notificar-oferta?brokers={{camel.component.kafka.brokers}}&autoCommitEnable=false&allowManualCommit=true
+      notificar-oferta-dlq: kafka:notificar-oferta-dlq?brokers={{camel.component.kafka.brokers}}&autoCommitEnable=false&allowManualCommit=true
+    http:
+       consultar-conta: http://service-conta:80/accounts/
+       consultar-auto: http://service-auto:80/autos/
+
+  component:
+    kafka:
+      autoCreateTopics: true
+      brokers: host.docker.internal:9092
+      group-id: service-oferta
+      client-id: service-oferta
+      auto-offset-reset: earliest
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  dataformat:
+    jackson:
+      auto-discover-object-mapper: true

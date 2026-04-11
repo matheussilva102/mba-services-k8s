@@ -1,0 +1,54 @@
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: service-conta
+  config:
+    import: optional:file:/config/application.yml
+
+  datasource:
+    url: jdbc:postgresql://host.docker.internal:5432/db_conta
+    username: admin
+    password: admin
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+camel:
+  routes:
+    direct: 
+      consultar-conta: direct:consultar-conta
+      criar-conta: direct:criar-conta
+    kafka:
+      notificar-conta: kafka:notificar-conta?brokers={{camel.component.kafka.brokers}}
+
+  component:
+    kafka:
+      autoCreateTopics: true
+      brokers: host.docker.internal:9092
+      group-id: service-conta
+      auto-offset-reset: earliest
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  dataformat:
+    jackson:
+      auto-discover-object-mapper: true

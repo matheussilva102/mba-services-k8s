@@ -1,0 +1,323 @@
+# =================================================
+# APPS: DEPLOYMENTS E SERVICES
+# =================================================
+
+# --- SERVICE OFERTA ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-oferta
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-oferta
+  template:
+    metadata:
+      labels:
+        app: service-oferta
+    spec:
+      hostAliases:
+      - ip: "172.20.0.1"
+        hostnames: ["host.docker.internal", "apps.local"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: service-cm
+      containers:
+      - name: app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "container"
+        image: service-oferta:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-oferta
+  labels:
+    monitor: app
+spec:
+  selector:
+    app: service-oferta
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: 8080
+
+---
+# --- SERVICE AUTO ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-auto
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-auto
+  template:
+    metadata:
+      labels:
+        app: service-auto
+    spec:
+      hostAliases:
+      - ip: "172.20.0.1"
+        hostnames: ["host.docker.internal", "apps.local"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: service-cm
+      containers:
+      - name: app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "container"
+        image: service-auto:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-auto
+  labels:
+    monitor: app
+spec:
+  selector:
+    app: service-auto
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: 8080
+
+---
+# --- SERVICE CONTA ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-conta
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-conta
+  template:
+    metadata:
+      labels:
+        app: service-conta
+    spec:
+      hostAliases:
+      - ip: "172.20.0.1"
+        hostnames: ["host.docker.internal", "apps.local"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: service-cm
+      containers:
+      - name: app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "container"
+        image: service-conta:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-conta
+  labels:
+    monitor: app
+spec:
+  selector:
+    app: service-conta
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: 8080
+
+---
+# --- SERVICE ACL EVENTO ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-acl-evento
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-acl-evento
+  template:
+    metadata:
+      labels:
+        app: service-acl-evento
+    spec:
+      hostAliases:
+      - ip: "172.20.0.1"
+        hostnames: ["host.docker.internal", "apps.local"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: service-cm
+      containers:
+      - name: app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "container"
+        image: service-acl-evento:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-acl-evento
+  labels:
+    monitor: app
+spec:
+  selector:
+    app: service-acl-evento
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: 8080
+
+---
+# =================================================
+# ATALHO PARA CROSS-NAMESPACE (GRAFANA)
+# =================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-internal-proxy
+spec:
+  type: ExternalName
+  externalName: prometheus-stack-grafana.monitoring.svc.cluster.local
+
+---
+# =================================================
+# INGRESS
+# =================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /accounts(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-conta
+            port:
+              number: 80
+      - path: /autos(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-auto
+            port:
+              number: 80
+      - path: /offers(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-oferta
+            port:
+              number: 80
+
+---
+# =================================================
+# INGRESS 2: MONITORAMENTO (COM REWRITE)
+# =================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /grafana(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana-internal-proxy
+            port:
+              number: 80
+---
+# =================================================
+# MONITORAMENTO
+# =================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apps-service-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      monitor: app
+  namespaceSelector:
+    any: true
+  endpoints:
+  - port: metrics
+    path: /actuator/prometheus
+    interval: 15s
+    scrapeTimeout: 10s

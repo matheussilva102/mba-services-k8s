@@ -1,0 +1,45 @@
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: refresh,health,info,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: service-acl-evento
+  config:
+    import: optional:file:/config/application.yml
+camel:
+  routes:
+    kafka:
+      notificar-conta: kafka:notificar-conta?brokers={{camel.component.kafka.brokers}}
+      notificar-auto: kafka:notificar-auto?brokers={{camel.component.kafka.brokers}}
+      notificar-oferta: kafka:notificar-oferta?brokers={{camel.component.kafka.brokers}}
+
+  component:
+    kafka:
+      autoCreateTopics: true
+      brokers: host.docker.internal:9092
+      group-id: service-acl-evento
+      client-id: service-acl-evento
+      auto-offset-reset: earliest
+
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  dataformat:
+    jackson:
+      auto-discover-object-mapper: true
