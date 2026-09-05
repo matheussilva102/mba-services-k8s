@@ -1,11 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "0. Limpando ambiente..."
-kind delete clusters --all
+echo "Subindo dependencias..."
 
-echo "1. Criando cluster KinD..."
-kind create cluster --config kind-config.yaml
+echo "1. Subindo kafka..."
+docker compose -f ./compose/kafka/docker-compose.yml down -v
+docker compose -f ./compose/kafka/docker-compose.yml up -d
+
+echo "2. Subindo postgres..."
+docker compose -f ./compose/postgres/docker-compose.yml down -v
+docker compose -f ./compose/postgres/docker-compose.yml up -d
+
+echo "configurando kinD..."
+CLUSTER="mbausp-cluster"
+echo "0. Limpando ambiente..."
+kind delete cluster --name "$CLUSTER"
+
+echo "1. Criando cluster $CLUSTER KinD..."
+kind create cluster --name "$CLUSTER" --config kind-config.yaml
 
 echo "2. Instalando Nginx Ingress Controller..."
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
@@ -43,20 +55,30 @@ echo "4. Compilando aplicações e Gerando Imagens..."
 mvn clean package -DskipTests
 
 SERVICES=("service-conta" "service-auto" "service-oferta" "service-acl-evento")
-
 for SVC in "${SERVICES[@]}"; do
   echo "--- Build e Load: $SVC ---"
   docker build -t "${SVC}:latest" -f "./${SVC}/Dockerfile" "./${SVC}"
-  kind load docker-image "${SVC}:latest"
+  kind load docker-image "${SVC}:latest" --name "$CLUSTER"
 done
 
 echo "5. Aplicando Manifesto de Configurações e Deployments..."
-kubectl apply -f config-map.yaml
-# Aplica o arquivo que contém seus Deployments, Services e o ServiceMonitor
-kubectl apply -f app-deployment.yaml 
+kubectl apply -f config-map.yaml --context "kind-$CLUSTER"
+
+# Aplica o arquivo que contém Deployments, Services e o ServiceMonitor
+SERVICES_K8S_YML=("service-conta-k8s" "service-auto-k8s" "service-oferta-k8s" "service-acl-evento-k8s" "ingress-k8s" "monitor-k8s")
+for SVC_K8S_YML in "${SERVICES_K8S_YML[@]}"; do
+  kubectl apply -f "$SVC_K8S_YML.yaml" --context "kind-$CLUSTER"
+done
+
+# Aplica o arquivo que contém Deployments, Services e o ServiceMonitor
+#kubectl apply -f app-full-deployment-k8s.yaml --context "kind-$CLUSTER"
 
 echo "6. Aguardando estabilização dos pods..."
-kubectl wait --for=condition=ready pod --all --timeout=120s
+kubectl wait --for=condition=ready pod --all --timeout=120s --context "kind-$CLUSTER"
+
+echo "7. Aplicando Metrics Server..."
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
 
 echo "--------------------------------------------------------"
 echo "✅ AMBIENTE CONFIGURADO COM SUCESSO!"
@@ -66,3 +88,4 @@ echo "Grafana:    kubectl port-forward -n monitoring svc/prometheus-stack-grafan
 echo "Credenciais Grafana: admin "
 kubectl get secret --namespace monitoring -l app.kubernetes.io/component=admin-secret -o jsonpath="{.items[0].data.admin-password}" | base64 --decode ; echo
 echo "--------------------------------------------------------"
+

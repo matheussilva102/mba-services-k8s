@@ -18,7 +18,7 @@ spec:
         app: service-oferta
     spec:
       hostAliases:
-      - ip: "172.20.0.1"
+      - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
         hostnames: ["host.docker.internal", "apps.local"]
       volumes:
         - name: config-volume
@@ -75,7 +75,7 @@ spec:
         app: service-auto
     spec:
       hostAliases:
-      - ip: "172.20.0.1"
+      - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
         hostnames: ["host.docker.internal", "apps.local"]
       volumes:
         - name: config-volume
@@ -132,7 +132,7 @@ spec:
         app: service-conta
     spec:
       hostAliases:
-      - ip: "172.20.0.1"
+      - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
         hostnames: ["host.docker.internal", "apps.local"]
       volumes:
         - name: config-volume
@@ -189,7 +189,7 @@ spec:
         app: service-acl-evento
     spec:
       hostAliases:
-      - ip: "172.20.0.1"
+      - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
         hostnames: ["host.docker.internal", "apps.local"]
       volumes:
         - name: config-volume
@@ -228,6 +228,56 @@ spec:
   - name: metrics
     port: 80
     targetPort: 8080
+
+---
+
+
+# =================================================
+# KAFKA
+# =================================================
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: kafka-external-svc
+  namespace: default
+subsets:
+- addresses:
+  - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
+  ports:
+  - name: metrics
+    port: 7071     # A porta onde o Kafka expõe as MÉTRICAS
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-external-svc
+  namespace: default
+  labels:
+    app: kafka-metrics
+spec:
+  ports:
+  - name: metrics
+    port: 7071
+    targetPort: 7071
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kafka-external-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: kafka-metrics
+  namespaceSelector:
+    any: true      # Crucial: permite que o Prometheus (em 'monitoring') veja o Service (em 'default')
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+
 
 ---
 # =================================================

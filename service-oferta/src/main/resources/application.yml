@@ -1,18 +1,5 @@
 server:
   port: 8080
-management:
-  endpoints:
-    web:
-      exposure:
-        include: refresh,health,info,prometheus
-  endpoint:
-    prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-
 spring:
   main:
     allow-bean-definition-overriding: true
@@ -40,8 +27,8 @@ camel:
       notificar-oferta: kafka:notificar-oferta?brokers={{camel.component.kafka.brokers}}&autoCommitEnable=false&allowManualCommit=true
       notificar-oferta-dlq: kafka:notificar-oferta-dlq?brokers={{camel.component.kafka.brokers}}&autoCommitEnable=false&allowManualCommit=true
     http:
-       consultar-conta: http://service-conta:80/accounts/
-       consultar-auto: http://service-auto:80/autos/
+       consultar-conta: http://service-conta/accounts/
+       consultar-auto: http://service-auto/autos/
 
   component:
     kafka:
