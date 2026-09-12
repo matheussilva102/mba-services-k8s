@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-conta
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-conta
+  template:
+    metadata:
+      labels:
+        app: service-conta
+    spec:
+      hostAliases:
+      - ip: "172.20.0.1" # sudo docker inspect kind-control-plane | grep Gateway
+        hostnames: ["host.docker.internal", "apps.local"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: service-cm
+      containers:
+      - name: app
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "container"
+        image: service-conta:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-conta
+  labels:
+    monitor: app
+spec:
+  selector:
+    app: service-conta
+  ports:
+  - name: metrics
+    port: 80
+    targetPort: 8080

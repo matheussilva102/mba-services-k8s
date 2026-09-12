@@ -69,7 +69,7 @@ public class OfertaRouteBloqueante extends RouteBuilder {
 			.unmarshal(new JacksonDataFormat(ObjectMapperUtils.defaultInstance(), AutoCliente.class))
 			.log("response auto >> ${body}")
 			.setProperty("auto-result", body())
-        	.process(ex -> {
+        	.setBody(ex -> {
         		var paramsSaveConditionally = new ArrayList<ParsedMessage>();
         		var accounts = ex.getProperty("conta-result", ContaCliente.class);
         		if (accounts.hasAccounts()) {
@@ -113,16 +113,8 @@ public class OfertaRouteBloqueante extends RouteBuilder {
         					rEntity.getOrigemOferta());
         		}, Collectors.toList()));
 
-        		ex.setProperty("route-result", new OfertaCliente(items));
+        		return new OfertaCliente(items);
         	})
-        	.setBody(exchangeProperty("route-result"))
-        	.process(ex -> {
-	        	// simular latencia
-	        	var min = OfertaRouteBloqueante.this.props.getMinLatencyInMilli();
-	        	var max = OfertaRouteBloqueante.this.props.getMaxLatencyInMilli();
-	        	var randomNum = ThreadLocalRandom.current().nextInt(min, max);
-	        	Thread.sleep(randomNum);
-	        })
         .end();
     }
 

@@ -1,0 +1,8 @@
+scrape_configs:
+  - job_name: 'kafka-broker-externo'
+    static_configs:
+      - targets: ['host.docker.internal:7071'] # Porta do JMX Exporter exposta no Compose
+
+  - job_name: 'kafka-exporter-externo'
+    static_configs:
+      - targets: ['host.docker.internal:9308'] # Porta do Kafka Exporter exposta no Compose

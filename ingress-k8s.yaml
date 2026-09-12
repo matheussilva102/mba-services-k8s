@@ -1,0 +1,56 @@
+# ==============================================
+# INGRESS GRAFANA: MONITORAMENTO (COM REWRITE)
+# ==============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /grafana(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: grafana-internal-proxy
+            port:
+              number: 80
+---
+# ==============================================
+# INGRESS APP: MONITORAMENTO (SEM REWRITE)
+# ==============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /accounts(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-conta
+            port:
+              number: 80
+      - path: /autos(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-auto
+            port:
+              number: 80
+      - path: /offers(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: service-oferta
+            port:
+              number: 80

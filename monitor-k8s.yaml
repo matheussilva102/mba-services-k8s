@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: kafka-external-svc
+  namespace: monitoring
+subsets:
+- addresses:
+  - ip: 172.20.0.1 # sudo docker inspect kind-control-plane | grep Gateway
+  ports:
+  - name: jmx-metrics
+    port: 7071
+  - name: lag-metrics
+    port: 9308
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-external-svc
+  namespace: monitoring
+  labels:
+    app: kafka-metrics
+spec:
+  ports:
+  - name: jmx-metrics
+    port: 7071
+    targetPort: 7071
+  - name: lag-metrics
+    port: 9308
+    targetPort: 9308
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kafka-external-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: kafka-metrics
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+  - port: jmx-metrics
+    interval: 15s
+    path: /metrics
+    scheme: http
+  - port: lag-metrics
+    interval: 15s
+    path: /metrics
+    scheme: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apps-service-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      monitor: app
+  namespaceSelector:
+    any: true
+  endpoints:
+  - port: metrics
+    path: /actuator/prometheus
+    interval: 15s

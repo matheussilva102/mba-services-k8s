@@ -1,0 +1,106 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # 1. Captura a ociosidade (Idle) - Atributo real é geralmente OneMinuteRate
+  - pattern: kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>OneMinuteRate
+    name: kafka_server_handler_avg_idle_percent
+    type: GAUGE
+
+  # 1.1. Alternativa para algumas versões de JMX
+  - pattern: kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>MeanRate
+    name: kafka_server_handler_avg_idle_percent_mean
+    type: GAUGE
+    
+  # 1.2 Captura o Count apenas se você quiser ver o acumulado (opcional)
+  - pattern: kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>Count
+    name: kafka_server_handler_avg_idle_total
+    type: COUNTER
+
+  # 1.3. MÉTRICAS POR TÓPICO (ESPECÍFICAS) - COUNTERS
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_$1_total
+    labels:
+      topic: "$2"
+    type: COUNTER
+
+  # 1.4 MÉTRICAS POR TÓPICO (ESPECÍFICAS) - GAUGE (Taxas instantâneas)
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>OneMinuteRate
+    name: kafka_server_brokertopicmetrics_$1_rate
+    labels:
+      topic: "$2"
+    type: GAUGE
+
+  # 2. MÉTRICAS TOTAIS DO BROKER (AGREGADAS) - COUNTERS
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_$1_total
+    labels:
+      topic: "all"
+    type: COUNTER
+
+  # 2.1 MÉTRICAS TOTAIS DO BROKER (AGREGADAS) - GAUGE
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+)><>OneMinuteRate
+    name: kafka_server_brokertopicmetrics_$1_rate
+    labels:
+      topic: "all"
+    type: GAUGE
+
+  # 3. MÉTRICAS DE LOG E PARTIÇÕES (Sempre GAUGE, pois o offset pode variar)
+  - pattern: kafka.log<type=Log, name=(.+), topic=(.+), partition=(.+)><>Value
+    name: kafka_log_$1
+    labels:
+      topic: "$2"
+      partition: "$3"
+    type: GAUGE
+
+  # 4. MÉTRICAS DE REPLICAÇÃO (GAUGE)
+  - pattern: kafka.server<type=ReplicaManager, name=(.+)><>Value
+    name: kafka_server_replicamanager_$1
+    type: GAUGE
+
+  # 5. Regra específica para Partições Offline
+  - pattern: kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value
+    name: kafka_controller_offline_partitions
+    type: GAUGE    
+
+  # 5.1. MÉTRICAS DO CONTROLLER (GAUGE)
+  - pattern: kafka.controller<type=KafkaController, name=(.+)><>Value
+    name: kafka_controller_$1
+    type: GAUGE
+    
+  # 5.2 Regra para Contagem de Réplicas por Partição/Tópico
+  - pattern: kafka.cluster<type=Partition, name=ReplicasCount, topic=(.+), partition=(.+)><>Value
+    name: kafka_cluster_partition_replicascount
+    labels:
+      topic: "$1"
+      partition: "$2"
+    type: GAUGE    
+
+  # 6. MÉTRICAS DE REDE E REQUESTS - COUNTERS (Total de requisições)
+  - pattern: kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>Count
+    name: kafka_network_requestmetrics_$1_total
+    labels:
+      request: "$2"
+    type: COUNTER
+
+  # 6.1 MÉTRICAS DE REDE E REQUESTS - GAUGE (Latência/Taxa)
+  - pattern: kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>OneMinuteRate
+    name: kafka_network_requestmetrics_$1_rate
+    labels:
+      request: "$2"
+    type: GAUGE
+
+  # 6.2 LATÊNCIA P99 - Tempo total da requisição
+  - pattern: kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>99thPercentile
+    name: kafka_network_requestmetrics_totaltimems_p99
+    labels:
+      request: "$1"
+    type: GAUGE
+
+  # 6.3 LATÊNCIA P95 - Tempo total da requisição
+  - pattern: kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>95thPercentile
+    name: kafka_network_requestmetrics_totaltimems_p95
+    labels:
+      request: "$1"
+    type: GAUGE
+    
